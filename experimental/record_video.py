@@ -2,7 +2,7 @@ import argparse
 import picamera
 import time
 
-VIDEO_DIR = '/home/pi/brooklyn_project/experimental/videos/'
+VIDEO_DIR = '/home/pi/brooklyn-project/experimental/videos/'
 
 parser = argparse.ArgumentParser(description='Record a video from the Raspberry Pi camera')
 parser.add_argument('--preview', action='store_true', help='Show a preview of the camera')
