@@ -18,7 +18,9 @@ with picamera.PiCamera(sensor_mode=4) as camera:
     camera.framerate = 42
     if args.preview:
         camera.start_preview()
+    print("STARTING RECORDING")
     camera.start_recording(VIDEO_DIR + f'{timestamp}.h264')
     camera.wait_recording(args.duration)
+    print("RECORDING FINISHED")
     camera.stop_recording()
 
