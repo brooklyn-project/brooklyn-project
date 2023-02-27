@@ -49,3 +49,7 @@ git remote set-url origin git@github.com:brooklyn-project/brooklyn-project.git
 ```
 
 To test that everything's working, add some random file to the `experimental` folder (that's why it's there) and see if you can `commit` then `push` it.
+
+## What's next?
+
+Go through all the beginner tutorials [here](https://wiki.ros.org/ROS/Tutorials).
