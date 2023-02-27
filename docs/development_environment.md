@@ -47,3 +47,5 @@ Since this is a private repository, you'll have to login to Github every time yo
 ```
 git remote set-url origin git@github.com:brooklyn-project/brooklyn-project.git
 ```
+
+To test that everything's working, add some random file to the `experimental` folder (that's why it's there) and see if you can `commit` then `push` it.
