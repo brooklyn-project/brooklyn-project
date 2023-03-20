@@ -50,6 +50,10 @@ git remote set-url origin git@github.com:brooklyn-project/brooklyn-project.git
 
 To test that everything's working, add some random file to the `experimental` folder (that's why it's there) and see if you can `commit` then `push` it.
 
+## Using a GUI
+
+Follow [this guide](https://medium.com/@potatowagon/how-to-use-gui-apps-in-linux-docker-container-from-windows-host-485d3e1c64a3), but instead of step 1, follow [these](https://sourceforge.net/projects/vcxsrv/) install instructions for XLaunch. 
+
 ## What's next?
 
 Go through all the beginner tutorials [here](https://wiki.ros.org/ROS/Tutorials).
