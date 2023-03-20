@@ -1,0 +1,38 @@
+<annotation>
+	<folder>Training Dataset</folder>
+	<filename>img3.png</filename>
+	<path>C:\Users\alpha\Pictures\Training Dataset\img3.png</path>
+	<source>
+		<database>Unknown</database>
+	</source>
+	<size>
+		<width>1202</width>
+		<height>823</height>
+		<depth>3</depth>
+	</size>
+	<segmented>0</segmented>
+	<object>
+		<name>TOI</name>
+		<pose>Unspecified</pose>
+		<truncated>0</truncated>
+		<difficult>0</difficult>
+		<bndbox>
+			<xmin>635</xmin>
+			<ymin>138</ymin>
+			<xmax>684</xmax>
+			<ymax>194</ymax>
+		</bndbox>
+	</object>
+	<object>
+		<name>TOI</name>
+		<pose>Unspecified</pose>
+		<truncated>0</truncated>
+		<difficult>0</difficult>
+		<bndbox>
+			<xmin>1105</xmin>
+			<ymin>134</ymin>
+			<xmax>1152</xmax>
+			<ymax>189</ymax>
+		</bndbox>
+	</object>
+</annotation>

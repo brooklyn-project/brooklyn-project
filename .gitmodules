@@ -1,0 +1,6 @@
+[submodule "payload_delivery"]
+	path = payload_delivery
+	url = https://github.com/brooklyn-project/payload_delivery.git
+[submodule "map_generation"]
+	path = map_generation
+	url = https://github.com/brooklyn-project/map_generation.git
