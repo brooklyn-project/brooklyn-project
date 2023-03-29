@@ -29,13 +29,13 @@ public:
 	//
 	
 	//This function will detect the objects based on an inputted video .mp4 file
-	void analyze_and_draw_video(const std::string & videoPath, const bool debug = false);
+	void analyze_and_draw_video(const std::string& videoPath);
 
 	//This function detect objects from the camera
-	void analyze_and_draw_camera(bool showImage = true);
+	void analyze_and_draw_camera();
 	
 	//This function is ooing to print out how many targets and critical targets are in the image
-	void analyse_and_draw(cv::Mat& image, bool debug = false, bool showImage = false);
+	void analyse_and_draw(cv::Mat& image, int* toiNum = nullptr, int* critNum = nullptr, bool debug = false, bool showImage = false);
 
 	//This function will draw the contour points on an inputted image
 	void drawContourOnImage(cv::Mat& image, const std::vector<std::vector<cv::Point>>& contour, cv::Scalar color, int thickness, int index);
@@ -64,8 +64,11 @@ public:
 	//This function will return if the contour vector has some info
 	bool isContoursEmpty(const std::vector<std::vector<cv::Point>>& contour);
 
-	//This function will loop through the contour list and draw the contours onto the image
-	void loop_and_draw_contour_and_image(cv::Mat& image, const std::vector<std::vector<cv::Point>>& contour, const cv::Scalar& toi, const cv::Scalar& crit);
+	//This function is going to change the size of the current image
+	void changeImageSize(cv::Mat& image, int width, int length);
+
+	////This function will loop through the contour list and draw the contours onto the image
+	//void loop_and_draw_contour_and_image(cv::Mat& image, const std::vector<std::vector<cv::Point>>& contour, const cv::Scalar& toi, const cv::Scalar& crit);
 
 
 //These functions will be used to debug
@@ -84,11 +87,15 @@ public:
 	//This function will be used to print out the contour values of an image
 	void printContours(const std::vector<std::vector<cv::Point>>& controus);
 
+	//This function will be used to print out the hiearchy values of an image
+	void printHiearchy(const std::vector<cv::Vec4i>& hiearchy);
+
 	//This function will calculate the area of contour when traversing through the vector of vectors
 	void calcAreaVectorofVector(const std::vector<std::vector<cv::Point>>& contour);
 
 	//This function will set the threshold values all to 0
 	void resetThresholdVals();
+
 };
 
 
