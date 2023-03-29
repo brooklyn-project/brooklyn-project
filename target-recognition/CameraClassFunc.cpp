@@ -2,8 +2,8 @@
 
 Camera::Camera() {
 	//Threshhold for background of TOI after it was calibrated
-	hmin = 73, smin = 71, vmin = 0;
-	hmax = 179, smax = 255, vmax = 255;
+	hmin = 73, smin = 71, vmin = 144;
+	hmax = 111, smax = 255, vmax = 255;
 	
 	//Initalizing the number of TOI found
 	targetFound = 0;
@@ -22,15 +22,64 @@ Camera::~Camera() {
 }
 
 
-void Camera::analyze_and_draw_video(const std::string& videoPath, const bool debug) {
+void Camera::analyze_and_draw_video(const std::string& videoPath) {
 	//These are the toi and critical targets
 	int toi = 0;
-	int criticalTagerts = 0;
+	int criticalTargets = 0;
+
+	//Create a video capture
+	cv::VideoCapture vid_input(videoPath);
+
+	if (!vid_input.isOpened()) {
+		std::cout << "Error opening vidoe stream!\n\n";
+		exit(1);
+	}
+
+	std::cout << "The Frame Rate: " << vid_input.get(5) << " frames per second\n";
+	std::cout << "The Frame count: " << vid_input.get(7) << " \n\n";
+
+	//Create an image
+	cv::Mat image;
+	cv::Mat resizeImage;
+	
+	//resize values
+	int down_width = 500;
+	int down_height = 500;
+
+
+	//loop through the images
+	while (vid_input.isOpened()) {
+
+		//Check that the 
+		if (!vid_input.read(image)) {
+			std::cout << "Unsuccessful at bragging the frame\n\n";
+			break;
+		}
+
+		//Change the image to display it
+		analyse_and_draw(image, &toi, &criticalTargets);
+
+		//Display the change
+		//cv::resize(image, image.size() / 2);
+		cv::imshow("New Updated Video: ", image);
+
+		//Break the loop
+		if (cv::waitKey(25) == 27) {
+			break;
+		}
+	}
+
+	//It will be an output message about what the algorithm found
+	std::cout << "The algorithm found #toi: " << toi << " and #critical: " << criticalTargets << " in the video: " << videoPath << "\n\n";
+
+	//Release the vidoe capture
+	vid_input.release();
+	cv::destroyAllWindows();
 
 	return;
 }
 
-void Camera::analyze_and_draw_camera(bool showImage) {
+void Camera::analyze_and_draw_camera() {
 	//Create a camera object
 	cv::VideoCapture cameraCapture(0);
 
@@ -41,50 +90,35 @@ void Camera::analyze_and_draw_camera(bool showImage) {
 	}
 
 	//Create a matrix image
-	cv::Mat image, imgHSV, imgMask;
-
-	//Create space for contour and hiercahy
-	std::vector<std::vector<cv::Point>> contour;
-	std::vector<cv::Vec4i> hiearchy;
-
-	//Color of TOI and Critical
-	cv::Scalar toiColor(255, 0, 0); //color blue
-	cv::Scalar critColor(0, 0, 255); //color red
+	cv::Mat image;
 
 
 	while (true) {
 		//Input what the camera is outputting onto the "image" variable
 		cameraCapture >> image;
 
-		//Convert to HSV
-		cv::cvtColor(image, imgHSV, cv::COLOR_BGR2HSV);
-		cv::Scalar lower(hmin, smin, vmin);
-		cv::Scalar upper(hmax, smax, vmax);
-		cv::inRange(imgHSV, lower, upper, imgMask);
+		//Call the analyze_and_draw function and will change the image
+		analyse_and_draw(image);
+	
+		//It will show the modified image from "analyze_and_draw" function
+		cv::imshow("Live Feed", image);
 
-		//This will get the contour value
-		contourXandY(0, 2, imgMask, contour, hiearchy);
-
-		if (isContoursEmpty(contour)) {
-			continue;
-		}
-
-		//Loop through the contour
-		loop_and_draw_contour_and_image(image, contour, toiColor, critColor);
-
-		//Show the image
-		cv::imshow("Live Camera Feed:", image);
-
-		//Break out of the image
 		if (cv::waitKey(25) == 27) {
 			break;
 		}
+	
 	}
+
+	//Release the camera
+	cameraCapture.release();
+
+	//Closes all the windows
+	cv::destroyAllWindows();
 
 	return;
 }
 
-void Camera::analyse_and_draw(cv::Mat& image, bool debug, bool showImage) {
+void Camera::analyse_and_draw(cv::Mat& image, int* toiNum, int* critNum, bool debug, bool showImage) {
 	//This is the number of toi and critical targets found
 	int toi = 0;
 	int critical = 0;
@@ -101,7 +135,11 @@ void Camera::analyse_and_draw(cv::Mat& image, bool debug, bool showImage) {
 	std::vector<cv::Vec4i> hiearchy;
 
 	//This will get the contour value
-	contourXandY(0, 2, imgMask, contour, hiearchy);
+	contourXandY(3, 1, imgMask, contour, hiearchy);
+
+	////Print out the contour and hiearchy
+	//printContours(contour);
+	//printHiearchy(hiearchy);
 
 	//Checks if the contour array is empty
 	if (isContoursEmpty(contour)) {
@@ -115,30 +153,38 @@ void Camera::analyse_and_draw(cv::Mat& image, bool debug, bool showImage) {
 	cv::Scalar toiColor(255, 0, 0 ); //color blue
 	cv::Scalar critColor(0, 0, 255); //color red
 
-	//Printing the number of contour points 
-	//std::cout << "This contour list has: " << contour.size() << " # of sets\n";
-
-	//Loop to go through every contour list and identify what is a toi and which one is critical target
-	for (size_t i = 0; i < contour.size(); i++) {
-		//Getting the contour area 
-		double contourArea = cv::contourArea(contour[i]);
-
-		//This will print out the 
-		//std::cout << "The contour area for i: " <<  i + 1 << " is: " << contourArea << "\n";
-
-		if (contourArea < 2000) { //This is a random blob
-			continue;
-		}else if (contourArea < 2300) { //This is a toi
-			toi++;
-			if (showImage) {
-				drawContourOnImage(image, contour, toiColor, 2, (int)i);
+	//Loop through the contour points
+	for (size_t i = 0; i < contour.size(); i++) {	
+		//If the current contour has no "First-Child" and "Parent" then it is just a target
+		if ((hiearchy[i][2] == -1) && (hiearchy[i][3] == -1) && (cv::contourArea(contour[i]) > 1200)) {
+			drawContourOnImage(image, contour, toiColor, 2, (int) i);
+			
+			//Changing the counter values when reading the video
+			if (toiNum != nullptr) {
+				*toiNum = *toiNum + 1;
 			}
-		}else if (contourArea < 2500) { //This is a critical
-			toi++;
-			critical++;
-			if (showImage) {
+			else {
+				toi++;
+			}
+
+		}else if((hiearchy[i][2] != -1) && (cv::contourArea(contour[i]) > 1200)) { //If the current contour has "First-child"
+			//std::cout << "The area inside the outerContour is: " << cv::contourArea(contour[hiearchy[i][2]]);
+
+			//Seeing that the inner area of the contour is small for a circle and that 
+			if (cv::contourArea(contour[hiearchy[i][2]]) > 200 && hiearchy[hiearchy[i][2]][3] == i) {
+				//Changing the counter values when reading the video
+				if (toiNum != nullptr && critNum != nullptr) {
+					*toiNum = *toiNum + 1;
+					*critNum = *critNum + 1;
+				}
+				else {
+					toi++;
+					critical++;
+				}
+
 				drawContourOnImage(image, contour, critColor, 2, (int)i);
 			}
+			
 		}
 	}
 
@@ -158,6 +204,13 @@ void Camera::analyse_and_draw(cv::Mat& image, bool debug, bool showImage) {
 
 void Camera::drawContourOnImage(cv::Mat& image, const std::vector<std::vector<cv::Point>>& contour, cv::Scalar color, int thickness, int index) {
 	cv::drawContours(image, contour, index, color, thickness);
+
+	return;
+}
+
+void Camera::changeImageSize(cv::Mat& image, int width, int length) {
+	//This is the resized image
+	cv::resize(image, image, cv::Size(width, length), 1);
 
 	return;
 }
@@ -226,20 +279,20 @@ void Camera::calibrateFromPhoto(const std::string& photoPath) {
 	vmin = cv::getTrackbarPos("Val Min", "Trackbars");
 	vmax = cv::getTrackbarPos("Val Max", "Trackbars");
 
-	//The next part is to obtain the contours values, need to allocate space for contours and hiearchy
-	std::vector<std::vector<cv::Point>> contour;
-	std::vector<cv::Vec4i> hiearchy;
-	//Print out the contour value from "contour0and1"
-	contour0and1(imgMask, contour, hiearchy);
+	////The next part is to obtain the contours values, need to allocate space for contours and hiearchy
+	//std::vector<std::vector<cv::Point>> contour;
+	//std::vector<cv::Vec4i> hiearchy;
+	////Print out the contour value from "contour0and1"
+	//contour0and1(imgMask, contour, hiearchy);
 
-	//Print out the contour value from "contour0and1"
-	contour1and2(imgMask, contour, hiearchy);
+	////Print out the contour value from "contour0and1"
+	//contour1and2(imgMask, contour, hiearchy);
 
-	//Print out the contour value from "contour0and1"
-	contour2and3(imgMask, contour, hiearchy);
+	////Print out the contour value from "contour0and1"
+	//contour2and3(imgMask, contour, hiearchy);
 
-	//Print out the contour value from "contour0and1"
-	contour3and4(imgMask, contour, hiearchy);
+	////Print out the contour value from "contour0and1"
+	//contour3and4(imgMask, contour, hiearchy);
 
 	return;
 }
@@ -287,30 +340,30 @@ bool Camera::isContoursEmpty(const std::vector<std::vector<cv::Point>>& contour)
 	return contour.size() == 0;
 }
 
-void Camera::loop_and_draw_contour_and_image(cv::Mat& image, const std::vector<std::vector<cv::Point>>& contour, const cv::Scalar& toi, const cv::Scalar& crit) {
-	//Loop to go through every contour list and identify what is a toi and which one is critical target
-	for (size_t i = 0; i < contour.size(); i++) {
-		//Getting the contour area 
-		double contourArea = cv::contourArea(contour[i]);
-
-		//This will print out the 
-		//std::cout << "The contour area for i: " <<  i + 1 << " is: " << contourArea << "\n";
-
-		if (contourArea < 2000) { //This is a random blob
-			continue;
-		}
-		else if (contourArea < 2300) { //This is a toi
-			drawContourOnImage(image, contour, toi, 2, (int) i);
-			
-		}
-		else if (contourArea < 2500) { //This is a critical
-			drawContourOnImage(image, contour, crit, 2, (int) i);
-			
-		}
-	}
-
-	return;
-}
+//void Camera::loop_and_draw_contour_and_image(cv::Mat& image, const std::vector<std::vector<cv::Point>>& contour, const cv::Scalar& toi, const cv::Scalar& crit) {
+//	//Loop to go through every contour list and identify what is a toi and which one is critical target
+//	for (size_t i = 0; i < contour.size(); i++) {
+//		//Getting the contour area 
+//		double contourArea = cv::contourArea(contour[i]);
+//
+//		//This will print out the 
+//		//std::cout << "The contour area for i: " <<  i + 1 << " is: " << contourArea << "\n";
+//
+//		if (contourArea < 2000) { //This is a random blob
+//			continue;
+//		}
+//		else if (contourArea < 2300) { //This is a toi
+//			drawContourOnImage(image, contour, toi, 2, (int) i);
+//			
+//		}
+//		else if (contourArea < 2500) { //This is a critical
+//			drawContourOnImage(image, contour, crit, 2, (int) i);
+//			
+//		}
+//	}
+//
+//	return;
+//}
 
 
 void Camera::testFunction() {
@@ -400,11 +453,23 @@ void Camera::getPhotoinfo(const std::string& photoPath) {
 
 void Camera::printContours(const std::vector<std::vector<cv::Point>>& contour) {
 	for (size_t i = 0; i < contour.size(); i++) {
-		std::cout << "Contour set: " << i + 1 << " has the following contour points\n";
+		std::cout << "Contour set: " << i << " has the following contour points\n";
 		for (size_t j = 0; j < contour[i].size(); j++) {
 			std::cout << contour[i][j] << "\n";
 		}
 		std::cout << "\n";
+	}
+	
+	return;
+}
+
+void Camera::printHiearchy(const std::vector<cv::Vec4i>& hiearchy) {
+	for (size_t i = 0; i < hiearchy.size(); i++) {
+		std::cout << "This is the hiearchy for set: " << i << " has the following\n";
+		std::cout << "hiearchy[" << i << "][0] = " << hiearchy[i][0] << "\n";
+		std::cout << "hiearchy[" << i << "][1] = " << hiearchy[i][1] << "\n";
+		std::cout << "hiearchy[" << i << "][2] = " << hiearchy[i][2] << "\n";
+		std::cout << "hiearchy[" << i << "][3] = " << hiearchy[i][3] << "\n\n";
 	}
 	
 	return;
