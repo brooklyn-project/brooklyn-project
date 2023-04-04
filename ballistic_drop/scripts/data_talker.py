@@ -4,7 +4,7 @@ import rospy
 from std_msgs.msg import String, Float64MultiArray
 
 def data_talker():
-    data = [[1, 99, 67], [67, 90, 76], [65, 45, 67]]
+    data = [[0, 0, 40, 0, 400, 5, 0, 0], [0, 0, 40, 0, 400, 0, 5, 0], [0, 0, 40, 90, 400, 5, 0, 0], [0, 0, 40, 90, 400, 0, 5, 0]]
     i = 0
     pub = rospy.Publisher('data_chatter', Float64MultiArray, queue_size=10)
     rospy.init_node('talker', anonymous=True)
