@@ -1,26 +1,21 @@
 #include "./CameraClass.h"
+#include "./CollectDataClass.h"
 
 int main(int argc, char** argv) {
 
 	std::vector<std::string> pictureArray{ "./resources/noTarget.jpg", "./resources/oneTarget.jpg", "./resources/twoTargets.jpg", \
 		"./resources/targetFaceSad.jpg", "./resources/targetFaceSmile.jpg", \
-		"./resources/critical_and_one_toi.jpg", "./resources/critical_and_two_toi.jpg"};
-	std::string photoPath = "./resources/critical_and_one_toi.jpg";
+		"./resources/critical_and_one_toi.jpg", "./resources/critical_and_two_toi.jpg" };
+	std::string photoPath = "./resources/critical_and_two_toi.jpg";
 	std::string videoPath = "./resources/search_phase.mp4";
-	std::vector<std::string> videoArray {"./resources/search_phase.mp4"};
+	std::vector<std::string> videoArray{ "./resources/search_phase.mp4" };
+
+	//Camera object
 	Camera camera = Camera();
-	bool debug = true;
-	bool showImage = true;
 
-	////Test the analyze_and_draw from an inputted video
-	//for (std::string video : videoArray) {
-	//	if (debug) {
-	//		std::cout << "The video: " << video << " has the following toi and critical targets:\n";
-	//	}
+	//ReturnData object
+	ReturnData endResult = ReturnData();	
 
-	//	//This will run the algorithm based on the inputted video
-	//	camera.analyze_and_draw_video(video, debug);
-	//}
 
 	////Try to read in the video that was clipped
 	//camera.analyze_and_draw_video(videoPath);
@@ -31,28 +26,25 @@ int main(int argc, char** argv) {
 	////Looping through every image of the array
 	//for (std::string image : pictureArray) {
 	//	//Create a mat image
-	//	cv::Mat matImage = camera.createImgMat(image);
+	//	cv::Mat matImage = cv::imread(image);
 
-	//	if (debug) {
-	//		//Print out a prompt to the user
-	//		std::cout << "The image: " << image << " has the following toi and critical targets:\n";
-	//	}
+	//	//Input that into the "analyze_and_draw" function
+	//	camera.analyse_and_draw(matImage, &endResult);
 
-	//	//Input that into teh "analyze_and_draw" function
-	//	camera.analyse_and_draw(matImage, nullptr, nullptr, debug, showImage);
+	//	//We can print out data from endResult. We can also make it a parameter so the data type is created only once, depends on how to implement it
+	//	endResult.printTheResultingData();
+
+	//	//Delete all the private variables information
+	//	endResult.deletePrivateVariablesData();
 
 	//}
 
 	////This to test analyze_and_draw() for one image
 	//cv::Mat image = camera.createImgMat(photoPath);
-	//camera.analyse_and_draw(image, nullptr, nullptr, debug, showImage);
-
-	////This is to calibrate the camera
-	//camera.calibrateFromPhoto(photoPath);
+	//camera.analyse_and_draw(image);
 
 
-	////This is needed to test with my function
-	//camera.resetThresholdVals();
-	//camera.testFunction();
+
+
 	return 0;
 }
