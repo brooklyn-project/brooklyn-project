@@ -1,27 +1,27 @@
 import numpy as np
 
 
-def getTiltDistortion(TILT, HEIGHT=10, FOV=np.radians(120), RESOLUTION=1024):
+def calculatePixelDistances(tilt, height, FOV, resolution):
     """
-    TILT -> Represented by 'phi' in documentation. Tilt of plane relative to horizon, right hand side above horizon is positive
-    HEIGHT -> Height of camera relative to the ground in units of distance
+    tilt -> Represented by 'phi' in documentation. tilt of plane relative to horizon, right hand side above horizon is positive
+    height -> Height of camera relative to the ground in units of distance
     FOV -> Field of view of camera in radians
-    RESOLUTION -> Resolution of image produced by camera in pixels
+    resolution -> Resolution of image produced by camera in pixels
     
     Returns two arrays:
-        pixel_indices -> Position in pixels of each pixel from 0 to RESOLUTION
-        distances -> Ground distance from each pixel to the camera, corresponding to pixel_indices
+        pixel_indices -> Position in pixels of each pixel from 0 to 'resolution'
+        distances -> Ground distance from each pixel to the camera, corresponding to 'pixel_indices'
     """
-    dTheta = FOV/RESOLUTION
-    leftAngle = 0.5*FOV - TILT
-    rightAngle = 0.5*FOV + TILT
+    dTheta = FOV/resolution
+    leftAngle = 0.5*FOV - tilt
+    rightAngle = 0.5*FOV + tilt
     
     leftThetas = np.arange(0, leftAngle, dTheta)
-    rightThetas = np.linspace(0, rightAngle, RESOLUTION-leftThetas.shape[0]) # This possibly biases the left/right, but guarantees assertion below
-    assert len(leftThetas) + len(rightThetas) == RESOLUTION
+    rightThetas = np.linspace(0, rightAngle, resolution-leftThetas.shape[0]) # This possibly biases the left/right, but guarantees assertion below
+    assert len(leftThetas) + len(rightThetas) == resolution
 
-    leftDisplacements = dTheta*HEIGHT/ (np.cos(leftThetas))**2
-    rightDisplacements = dTheta*HEIGHT/ (np.cos(rightThetas))**2
+    leftDisplacements = dTheta*height/ (np.cos(leftThetas))**2
+    rightDisplacements = dTheta*height/ (np.cos(rightThetas))**2
 
     # Calculate distances from directly below the plane
     leftDistances = np.zeros(leftDisplacements.shape[0])
@@ -38,8 +38,8 @@ def getTiltDistortion(TILT, HEIGHT=10, FOV=np.radians(120), RESOLUTION=1024):
             sum_of_disps += rightDisplacements[sum_index]
         rightDistances[index] = sum_of_disps
     
-    pixel_indices = np.arange(0, RESOLUTION, 1)
-    distances = np.zeros(RESOLUTION)
+    pixel_indices = np.arange(0, resolution, 1)
+    distances = np.zeros(resolution)
     for index in pixel_indices:
         if index < leftDistances.shape[0]:
             distances[index] = leftDistances[leftDistances.shape[0]-1-index]
@@ -49,7 +49,48 @@ def getTiltDistortion(TILT, HEIGHT=10, FOV=np.radians(120), RESOLUTION=1024):
     return pixel_indices, distances
 
 
-# For plotting test output for this function:
+def addMetersToCoords(latitude, longitude, dlat, dlon):
+    """
+    latitude -> Latitude coordinate to add to
+    longitude -> Longitude coordinate to add to
+    dlat -> Distance in meters to add to latitude coordinate
+    dlon -> Distance in meters to add to longitude coordinate
+    
+    Returns two floats:
+        -> New latitude
+        -> New longitude
+    """
+    R_EARTH = 6378000
+    new_lat  = latitude  + (dlat / r_earth) * (180 / np.pi);
+    new_lon = longitude + (dlon / r_earth) * (180 / np.pi) / np.cos(latitude * np.pi/180);
+    
+    return new_lat, new_lon
+    
+
+def getTargetLatLon(plane_lat, plane_lon, plane_pitch, plane_roll, plane_yaw, plane_h, target_x, target_y, image_x, image_y):
+    """
+    plane_lat -> Latitude coordinate of the plane
+    plane_lon -> Longitude coordinate of the plane
+    plane_pitch -> Pitch of plane in radians
+    plane_roll -> Roll of plane in radians
+    plane_yaw -> Yaw of plane in radians
+    plane_h -> height of plane relative to the ground in meters
+    target_x -> Position of target along x-dimension of image in pixels
+    target_y -> Position of target along y-dimension of image in pixels
+    image_x -> Width of camera image of target in pixels
+    image_y -> height of camera image of target in pixels
+    
+    Returns two floats:
+        target_lat -> Latitude coordinate of the target of interest
+        target_lon -> Longitude coordinate of the target of interest
+    """
+    x_distances = calculatePixelDistances(plane_roll, plane_h, FOV, image_x)
+    y_distances = calculatePixelDistances(plane_pitch, plane_h, FOV, image_y)
+    
+    
+
+
+# For plotting test output of calculatePixelDistances function:
 #
 # import matplotlib.pyplot as plt
 # RESOLUTION = 2000
