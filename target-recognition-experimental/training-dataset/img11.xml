@@ -1,0 +1,50 @@
+<annotation>
+	<folder>Flight Images</folder>
+	<filename>img11.png</filename>
+	<path>C:\Users\alpha\Pictures\Flight Images\img11.png</path>
+	<source>
+		<database>Unknown</database>
+	</source>
+	<size>
+		<width>1210</width>
+		<height>826</height>
+		<depth>3</depth>
+	</size>
+	<segmented>0</segmented>
+	<object>
+		<name>TOI</name>
+		<pose>Unspecified</pose>
+		<truncated>0</truncated>
+		<difficult>0</difficult>
+		<bndbox>
+			<xmin>572</xmin>
+			<ymin>50</ymin>
+			<xmax>633</xmax>
+			<ymax>106</ymax>
+		</bndbox>
+	</object>
+	<object>
+		<name>TOI</name>
+		<pose>Unspecified</pose>
+		<truncated>0</truncated>
+		<difficult>0</difficult>
+		<bndbox>
+			<xmin>1171</xmin>
+			<ymin>494</ymin>
+			<xmax>1208</xmax>
+			<ymax>547</ymax>
+		</bndbox>
+	</object>
+	<object>
+		<name>CRT</name>
+		<pose>Unspecified</pose>
+		<truncated>0</truncated>
+		<difficult>0</difficult>
+		<bndbox>
+			<xmin>1178</xmin>
+			<ymin>509</ymin>
+			<xmax>1200</xmax>
+			<ymax>533</ymax>
+		</bndbox>
+	</object>
+</annotation>
