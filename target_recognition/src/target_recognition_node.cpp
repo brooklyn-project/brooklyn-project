@@ -1,4 +1,3 @@
-#include "ros/ros.h"
 #include "CameraClass.h"
 
 int main(int argc, char** argv) {

@@ -2,6 +2,7 @@
 #ifndef CAMERACLASS_H
 #define CAMERACLASS_H
 
+#include <ros/ros.h>
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/highgui.hpp>
 #include <opencv2/imgproc.hpp>
@@ -22,6 +23,7 @@ private:
 	//Threshold value for targets
 	int hmin_, smin_, vmin_;
 	int hmax_, smax_, vmax_;
+	ros::Subscriber image_sub;
 
 
 public:
