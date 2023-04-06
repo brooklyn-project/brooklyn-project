@@ -24,6 +24,7 @@ private:
 	int hmin_, smin_, vmin_;
 	int hmax_, smax_, vmax_;
 	ros::Subscriber image_sub;
+	ros::Publisher debug_image_pub;
 
 
 public:
