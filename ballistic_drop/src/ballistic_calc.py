@@ -89,7 +89,7 @@ def bal_Calc(target_lat, target_long, v_x, v_y, v_z, z_loc, w_x, w_y, w_z):
     
 
 # ROS 
-class DataListener:
+class BallisticsInfo:
     def __init__(self):
         rospy.init_node('predict_drop', anonymous=True)
 
@@ -149,6 +149,6 @@ if __name__ == '__main__':
     # x_disp, y_disp, z_curr, x, y, z = bal_Calc(target_lat, target_long, V, true_course, z_loc, w_x, w_y, w_z)
     # print(x_disp, y_disp, z_curr)
 
-    listener = DataListener()
+    listener = BallisticsInfo()
     listener.spin()
 
