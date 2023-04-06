@@ -1,111 +1,16 @@
 #include "ros/ros.h"
-#include "./CameraClass.h"
+#include "CameraClass.h"
 
-Camera::Camera(ros::NodeHandle *nh) {
-	//Threshhold for background of TOI after it was calibrated
-	hmin_ = 73, smin_ = 71, vmin_ = 144;
-	hmax_ = 111, smax_ = 255, vmax_ = 255;
-	ros::Subscriber sub = nh->subscribe("/camera/image", 1000, &Camera::analyze_and_draw, this);
-	//End of function
-	return;
-}
 
 Camera::~Camera() {
 	std::cout << "\nDeleting the CAMERA object\n";
-
 	return;
 }
-
-
-void Camera::analyze_and_draw_video(const std::string& videoPath) {
-
-	//Create a video capture
-	cv::VideoCapture vid_input(videoPath);
-
-	if (!vid_input.isOpened()) {
-		std::cout << "Error opening vidoe stream!\n\n";
-		exit(1);
-	}
-
-	std::cout << "The Frame Rate: " << vid_input.get(5) << " frames per second\n";
-	std::cout << "The Frame count: " << vid_input.get(7) << " \n\n";
-
-	//Create an image
-	cv::Mat image;
-
-	//loop through the images
-	while (vid_input.isOpened()) {
-
-		//Check that the 
-		if (!vid_input.read(image)) {
-			std::cout << "Unsuccessful at bragging the frame\n\n";
-			break;
-		}
-
-		//Change the image to display it
-		analyse_and_draw(image);
-
-		//Display the change
-		cv::imshow("New Updated Video: ", image);
-
-		//Break the loop
-		if (cv::waitKey(25) == 27) {
-			break;
-		}
-	}
-
-	//Release the video capture
-	vid_input.release();
-	cv::destroyAllWindows();
-
-	return;
-}
-
-void Camera::analyze_and_draw_camera() {
-	//Create a camera object
-	cv::VideoCapture cameraCapture(0);
-
-	//Check that the camera is working properly
-	if (!cameraCapture.isOpened()) {
-		std::cout << "The Camera is not working\n";
-		exit(1);
-	}
-
-	//Create a matrix image
-	cv::Mat image;
-
-
-	while (true) {
-		//Input what the camera is outputting onto the "image" variable
-		cameraCapture >> image;
-
-		//Call the analyze_and_draw function and will change the image
-		analyse_and_draw(image);
-
-		//It will show the modified image from "analyze_and_draw" function
-		cv::imshow("Live Feed", image);
-
-		if (cv::waitKey(25) == 27) {
-			break;
-		}
-
-	}
-
-	//Release the camera
-	cameraCapture.release();
-
-	//Closes all the windows
-	cv::destroyAllWindows();
-
-	return;
-}
-
-
 
 void Camera::differentiateFaces(cv::Mat& image, char* faceColor) {
 	//These are the templates that will be used to be compared with the image
-	cv::Mat happyReference = cv::imread("./resources/SmileTemplate.jpg");
-	cv::Mat sadReference = cv::imread("./resources/SadTemplate.jpg");
+	cv::Mat happyReference = cv::imread("../resources/SmileTemplate.jpg");
+	cv::Mat sadReference = cv::imread("../resources/SadTemplate.jpg");
 	cv::Mat happyResult, sadResult;
 
 	//These are going to be values needed for the happy result
@@ -155,8 +60,9 @@ void Camera::contourXandY(const int RetrievalMode, const int ContourApprox, cv::
 	return;
 }
 
-void Camera::analyse_and_draw(cv::Mat& image, ReturnData* resultCollector) {
+std::vector<TargetPixels> Camera::analyse_and_draw(cv::Mat& image) {
 
+	std::vector<TargetPixels> res;
 	//Create an HSV, and mask
 	cv::Mat imgHSV, imgMask;
 	cv::cvtColor(image, imgHSV, cv::COLOR_BGR2HSV);
@@ -173,7 +79,7 @@ void Camera::analyse_and_draw(cv::Mat& image, ReturnData* resultCollector) {
 
 	//Checks if the contour array is empty
 	if (contour.size() == 0) {
-		return;
+		return res;
 	}
 
 	//This will be the color that will be used to box in the toi or critical target
@@ -189,21 +95,22 @@ void Camera::analyse_and_draw(cv::Mat& image, ReturnData* resultCollector) {
 
 			char color = 'b';
 
-			drawContourOnImage(image, contour, toiColor, 2, (int)i); //draw the contour
+			// drawContourOnImage(image, contour, toiColor, 2, (int)i); //draw the contour
 
 			//if this is nullptr then we collect data
-			if (resultCollector != nullptr) {
+			// if (resultCollector != nullptr) {
 				//Calculate the center point of the picture
 				cv::Moments M = cv::moments(contour[i]);
 				cv::Point center(M.m10 / M.m00, M.m01 / M.m00);
+				res.push_back(TargetPixels(center, color));
 
-				//Input the center of this contour and add it to a list that we already have
-				resultCollector->returnPixels()->addCenterToList(center);
+				// //Input the center of this contour and add it to a list that we already have
+				// resultCollector->returnPixels()->addCenterToList(center);
 
-				//Add the color of the toi that was found here
-				resultCollector->returnPixels()->addColorToList(color);
+				// //Add the color of the toi that was found here
+				// resultCollector->returnPixels()->addColorToList(color);
 
-			}
+			// }
 
 		}
 		else if ((hiearchy[i][2] != -1) && (cv::contourArea(contour[i]) > 1200) && cv::contourArea(contour[hiearchy[i][2]]) > 200 && hiearchy[hiearchy[i][2]][3] == i) {
@@ -224,39 +131,59 @@ void Camera::analyse_and_draw(cv::Mat& image, ReturnData* resultCollector) {
 
 			//We have to differientiate between a happy and sad face
 			differentiateFaces(croppedImage, &faceColor);
+			res.push_back(TargetPixels(center, faceColor));
 
 
-			if (faceColor == 'g') { //Happy Face and draw it on
+			// if (faceColor == 'g') { //Happy Face and draw it on
+			// 	drawContourOnImage(image, contour, happyColor, 2, (int)i);
+			// }
+			// else { //Sad Face and draw it on
+			// 	drawContourOnImage(image, contour, sadColor, 2, (int)i);
+			// }
 
-				drawContourOnImage(image, contour, happyColor, 2, (int)i);
+			// //If resultCollector is not equal to nullptr then we start to collect data to be displayed
+			// if (resultCollector != nullptr) {
+			// 	//Input the center of this contour and add it to a list that we already have
+			// 	resultCollector->returnPixels()->addCenterToList(center);
 
-			}
-			else { //Sad Face and draw it on
+			// 	//Add the color of the toi that was found here
+			// 	resultCollector->returnPixels()->addColorToList(faceColor);
 
-				drawContourOnImage(image, contour, sadColor, 2, (int)i);
-
-			}
-
-			//If resultCollector is not equal to nullptr then we start to collect data to be displayed
-			if (resultCollector != nullptr) {
-				//Input the center of this contour and add it to a list that we already have
-				resultCollector->returnPixels()->addCenterToList(center);
-
-				//Add the color of the toi that was found here
-				resultCollector->returnPixels()->addColorToList(faceColor);
-
-			}
+			// }
 		}
 	}
 
-	if (resultCollector != nullptr) {
-		cv::imshow("New image: ", image);
-		cv::waitKey(0);
+	// if (resultCollector != nullptr) {
+	// 	cv::imshow("New image: ", image);
+	// 	cv::waitKey(0);
 
-	}
+	// }
 
 
 	//Return a pointer of this data type
+	return res;
+}
+
+// Define the ROS subscriber callback function
+void Camera::cameraCallback(const sensor_msgs::ImageConstPtr& msg)
+{
+  // Convert the ROS image message to an OpenCV Mat object
+  cv::Mat image = cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::BGR8)->image;
+
+  // Call the analyse_and_draw function of the Camera object, passing in the OpenCV Mat object
+  std::vector<TargetPixels> targetsPixels = this->analyse_and_draw(image);
+
+  // Do some processing with targetsPixels here @cameron and @luca
+
+  // Then publish the latitude and longitude data so the map_generator_node can read it
+}
+
+Camera::Camera(ros::NodeHandle *nh) {
+	//Threshhold for background of TOI after it was calibrated
+	hmin_ = 73, smin_ = 71, vmin_ = 144;
+	hmax_ = 111, smax_ = 255, vmax_ = 255;
+	ros::Subscriber sub = nh->subscribe("/camera/image", 10, &Camera::cameraCallback, this);
+	//End of function
 	return;
 }
 
