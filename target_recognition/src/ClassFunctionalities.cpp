@@ -182,6 +182,7 @@ Camera::Camera(ros::NodeHandle *nh) {
 	//Threshhold for background of TOI after it was calibrated
 	hmin_ = 73, smin_ = 71, vmin_ = 144;
 	hmax_ = 111, smax_ = 255, vmax_ = 255;
+	ROS_INFO("Subscribing to /camera/image");
 	ros::Subscriber sub = nh->subscribe("/camera/image", 10, &Camera::cameraCallback, this);
 	//End of function
 	return;
