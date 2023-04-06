@@ -91,11 +91,10 @@ def getTargetLatLon(plane_lat, plane_lon, plane_pitch, plane_roll, plane_yaw, pl
 
 
     DiagFOV = 120
-    CAMERA_WIDTH_PIXELS = 4608
-    CAMERA_HEIGHT_PIXELS = 2592
+    
 
-    XFOV = 120 * CAMERA_WIDTH_PIXELS / math.sqrt(CAMERA_HEIGHT_PIXELS**2 + CAMERA_WIDTH_PIXELS**2)  * math.pi() / 180
-    YFOV = 120 * CAMERA_HEIGHT_PIXELS / math.sqrt(CAMERA_HEIGHT_PIXELS**2 + CAMERA_WIDTH_PIXELS**2) * math.pi() / 180
+    XFOV = 120 * image_x / math.sqrt(image_y**2 + image_x**2)  * math.pi() / 180
+    YFOV = 120 * image_y / math.sqrt(image_y**2 + image_x**2) * math.pi() / 180
 
     x_distances = calculatePixelDistances(plane_roll, plane_altitude, XFOV, image_x)
     y_distances = calculatePixelDistances(plane_pitch, plane_altitude, YFOV, image_y)
