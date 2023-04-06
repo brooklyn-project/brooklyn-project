@@ -95,7 +95,7 @@ std::vector<TargetPixels> Camera::analyse_and_draw(cv::Mat& image) {
 
 			char color = 'b';
 
-			// drawContourOnImage(image, contour, toiColor, 2, (int)i); //draw the contour
+			drawContourOnImage(image, contour, toiColor, 2, (int)i); //draw the contour
 
 			//if this is nullptr then we collect data
 			// if (resultCollector != nullptr) {
@@ -134,12 +134,12 @@ std::vector<TargetPixels> Camera::analyse_and_draw(cv::Mat& image) {
 			res.push_back(TargetPixels(center, faceColor));
 
 
-			// if (faceColor == 'g') { //Happy Face and draw it on
-			// 	drawContourOnImage(image, contour, happyColor, 2, (int)i);
-			// }
-			// else { //Sad Face and draw it on
-			// 	drawContourOnImage(image, contour, sadColor, 2, (int)i);
-			// }
+			if (faceColor == 'g') { //Happy Face and draw it on
+				drawContourOnImage(image, contour, happyColor, 2, (int)i);
+			}
+			else { //Sad Face and draw it on
+				drawContourOnImage(image, contour, sadColor, 2, (int)i);
+			}
 
 			// //If resultCollector is not equal to nullptr then we start to collect data to be displayed
 			// if (resultCollector != nullptr) {
@@ -168,10 +168,12 @@ std::vector<TargetPixels> Camera::analyse_and_draw(cv::Mat& image) {
 void Camera::cameraCallback(const sensor_msgs::ImageConstPtr& msg)
 {
   // Convert the ROS image message to an OpenCV Mat object
-  cv::Mat image = cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::BGR8)->image;
+  cv::Mat image = cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::RGBA8)->image;
+  ros::Time imgTimestamp = msg->header.stamp;
 
   // Call the analyse_and_draw function of the Camera object, passing in the OpenCV Mat object
   std::vector<TargetPixels> targetsPixels = this->analyse_and_draw(image);
+  debug_image_pub.publish(cv_bridge::CvImage(std_msgs::Header(), "rgba8", image).toImageMsg());
 
   // Do some processing with targetsPixels here @cameron and @luca
 
@@ -183,7 +185,8 @@ Camera::Camera(ros::NodeHandle *nh) {
 	hmin_ = 73, smin_ = 71, vmin_ = 144;
 	hmax_ = 111, smax_ = 255, vmax_ = 255;
 	ROS_INFO("Subscribing to /camera/image");
-	image_sub = nh->subscribe("/camera/image", 10, &Camera::cameraCallback, this);
+	image_sub = nh->subscribe<sensor_msgs::Image>("/camera/image", 10, &Camera::cameraCallback, this);
+	debug_image_pub = nh->advertise<sensor_msgs::Image>("/analyzed_image", 10);
 	//End of function
 	return;
 }
