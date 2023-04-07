@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 import rospy
-from geometry_msgs import PoseWithCovarianceStamped, TwistStamped
+# from geometry_msgs import PoseWithCovarianceStamped, TwistStamped
 from std_msgs.msg import String, Float64MultiArray, Float64
 import numpy as np
 import math
@@ -44,10 +44,11 @@ def solve_ODE(v_x, v_y, v_z, w_x, w_y, w_z, x_disp, y_disp, z_loc):
     return x_disp, y_disp, z_loc, v_x, v_y, v_z
 
 # Determine location of drop for payload
-def bal_Calc(target_lat, target_long, v_x, v_y, v_z, z_loc, w_x, w_y, w_z):
-    # Drop altitude, initial z value
+def bal_Calc(target_lat, target_long, v_comp, z_loc, w_comp):
+    # Drop altitude, initial z value, wind and velocity components
     z_curr = z_loc
-    w_x_curr, w_y_curr, w_z_curr = w_x, w_y, w_z
+    w_x_curr, w_y_curr, w_z_curr = w_comp[0], w_comp[1], w_comp[2]
+    v_x, v_y, v_z = v_comp[0], v_comp[1], v_comp[2]
 
     # x and y displacement
     x_disp, y_disp =  0, 0
@@ -70,22 +71,21 @@ def bal_Calc(target_lat, target_long, v_x, v_y, v_z, z_loc, w_x, w_y, w_z):
         w_y_curr = wind_Update(w_y_curr, z_prev, z_curr)
         w_z_curr = wind_Update(w_z_curr, z_prev, z_curr)
 
-        # print(w_x_curr, w_y_curr, w_z_curr)
-
         # Set previous z coordinate to previous variable
         z_prev = z_curr
 
         # Solve ODE for new x,y,z coordinate and velocity
         x_disp, y_disp, z_curr, v_x, v_y, v_z = solve_ODE(v_x, v_y, v_z, w_x_curr, w_y_curr, w_z_curr, x_disp, y_disp, z_curr)
-        # print(x_disp, y_disp, z_curr, v_x, v_y, v_z)
-        # print(x_disp, y_disp, z_curr)
+
         x.append(x_disp)
         y.append(y_disp)
         z.append(z_curr)
         
     # Release coordinates are equal to the target coordinates, shifted 
     # − x m in the north direction and − y m in the east direction
-    return x_disp, y_disp, z_curr, x, y, z
+    new_lat = target_lat - (x_disp/111000)
+    new_long = target_long - (y_disp / (math.cos(target_lat) * 111000))
+    return new_lat, new_long, target_lat, target_long
     
 
 # ROS 
@@ -104,7 +104,7 @@ class BallisticsInfo:
         self.wind_y = 0
         self.wind_z = 0
 
-        rospy.Subscriber("/mavros/global_position/local", PoseWithCovarianceStamped, self.location_callback)
+        rospy.Subscriber("/mavros/global_position/global", PoseWithCovarianceStamped, self.location_callback)
         rospy.Subscriber("/mavros/global_position/gp_vel", TwistStamped, self.velocity_callback)
         rospy.Subscriber("/mavros/global_position/compass_hdg", Float64, self.heading_callback)
         rospy.Subscriber("/mavros/global_position/rel_alt", Float64, self.altitude_callback)
@@ -134,21 +134,40 @@ class BallisticsInfo:
         rate = rospy.Rate(10)
         while not rospy.is_shutdown():
             # Calculate ballistics drop location
-            x_disp, y_disp, z_curr, x, y, z = bal_Calc(self.latitude, self.longitude, self.vel_x, self.vel_y, self.vel_z, self.altitude_data, self.wind_x, self.wind_y, self.wind_z)
+            w_comp = [self.wind_x, self.wind_y, self.wind_z]
+
+            # Calculate plane velocity opposite of wind
+            w_xy = [self.wind_x, self.wind_y]
+            unit_xy = -1 * (w_xy / np.linalg.norm(w_xy))
+
+            v_comp = [unit_xy[0]*self.vel_x, unit_xy[1]*self.vel_y, self.vel_z]
+
+            new_lat, new_long, target_lat, target_long = bal_Calc(self.latitude, self.longitude, v_comp, self.altitude_data, self.wind_x, self.wind_y, self.wind_z, w_comp)
             rate.sleep()
 
 # Main functions
-if __name__ == '__main__':  
-    # target_lat = 0
-    # target_long = 0
-    # V = 40
-    # true_course = 90
-    # z_loc = 400
-    # w_x, w_y, w_z = 0,0,0
+if __name__ == '__main__': 
+    # Testing 
+    target_lat = 0
+    target_long = 0
 
-    # x_disp, y_disp, z_curr, x, y, z = bal_Calc(target_lat, target_long, V, true_course, z_loc, w_x, w_y, w_z)
-    # print(x_disp, y_disp, z_curr)
+    V = 40
+    true_course = 90
 
-    listener = BallisticsInfo()
-    listener.spin()
+    z_loc = 400
+
+    v_comp = [40,40,0]
+    w_comp = [-5,-0.0001,0]
+    w_xy = [w_comp[0], w_comp[1]]
+    unit_xy = -1 * (w_xy / np.linalg.norm(w_xy))
+
+    v_comp = [unit_xy[0]*v_comp[0], unit_xy[1]*v_comp[1], v_comp[2]] 
+    print(v_comp)
+
+    new_lat, new_long, target_lat, target_long = bal_Calc(target_lat, target_long, v_comp, z_loc, w_comp)
+    print("Payload Release Point: ",new_lat, new_long)
+    print("Target Location: ", target_lat, target_long)
+
+    # listener = BallisticsInfo()
+    # listener.spin()
 
