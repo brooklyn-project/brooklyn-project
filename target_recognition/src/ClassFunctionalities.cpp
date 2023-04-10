@@ -3,7 +3,139 @@
 #include <iostream>
 #include <cmath>
 #include <vector>
+#include <tf2/LinearMath/Quaternion.h>
+#include <tf2/LinearMath/Matrix3x3.h>
+#include <geometry_msgs/Quaternion.h>
+#include <map_generation/TargetLocationMsg.h>
+#include <map_generation/TargetLocationsMsg.h>
 
+
+//Below this line is Pixels to coordinate calculation
+
+std::pair<std::vector<int>, std::vector<double>> calculatePixelDistances(double tilt, double height, double FOV, int resolution) {
+    double dTheta = FOV / resolution;
+    double leftAngle = 0.5 * FOV - tilt;
+    double rightAngle = 0.5 * FOV + tilt;
+
+    std::vector<double> leftThetas;
+    for (double theta = 0; theta < leftAngle; theta += dTheta) {
+        leftThetas.push_back(theta);
+    }
+    std::vector<double> rightThetas;
+    for (double theta = 0; theta <= rightAngle; theta += (rightAngle - leftAngle) / (resolution - leftThetas.size())) {
+        rightThetas.push_back(theta);
+    }
+
+    std::vector<double> leftDisplacements;
+    for (double theta : leftThetas) {
+        leftDisplacements.push_back(dTheta * height / (std::cos(theta) * std::cos(theta)));
+    }
+    std::vector<double> rightDisplacements;
+    for (double theta : rightThetas) {
+        rightDisplacements.push_back(dTheta * height / (std::cos(theta) * std::cos(theta)));
+    }
+
+    std::vector<double> leftDistances(leftDisplacements.size());
+    for (int i = 0; i < leftDisplacements.size(); ++i) {
+        double sum_of_disps = 0;
+        for (int j = 0; j <= i; ++j) {
+            sum_of_disps += leftDisplacements[j];
+        }
+        leftDistances[i] = sum_of_disps;
+    }
+
+    std::vector<double> rightDistances(rightDisplacements.size());
+    for (int i = 0; i < rightDisplacements.size(); ++i) {
+        double sum_of_disps = 0;
+        for (int j = 0; j <= i; ++j) {
+            sum_of_disps += rightDisplacements[j];
+        }
+        rightDistances[i] = sum_of_disps;
+    }
+
+    std::vector<int> pixel_indices;
+    for (int i = 0; i < resolution; ++i) {
+        pixel_indices.push_back(i);
+    }
+    std::vector<double> distances(resolution);
+    for (int i = 0; i < resolution; ++i) {
+        if (i < leftDistances.size()) {
+            distances[i] = leftDistances[leftDistances.size() - 1 - i];
+        } else {
+            distances[i] = rightDistances[i - leftDistances.size()];
+        }
+    }
+
+    return std::make_pair(pixel_indices, distances);
+}
+
+std::pair<double, double> addMetersToCoords(double latitude, double longitude, double dlat, double dlon) {
+    const double R_EARTH = 6378000;
+    double new_lat = latitude + (dlat / R_EARTH) * (180 / M_PI);
+    double new_lon = longitude + (dlon / R_EARTH) * (180 / M_PI) / std::cos(latitude * M_PI / 180);
+
+    return std::make_pair(new_lat, new_lon);
+}
+
+std::pair<double, double> getTargetLatLon(double plane_lat, double plane_lon, double plane_pitch, double plane_roll, double plane_yaw, double plane_altitude, int target_x, int target_y, int width, int height) {
+    const double NORTHYAW = 0;
+    const double DiagFOV = 120;
+
+    double XFOV = DiagFOV * width / std::sqrt(height * height + width * width) * M_PI / 180;
+    double YFOV = DiagFOV * height / std::sqrt(height * height + width * width) * M_PI / 180;
+
+    std::pair<std::vector<int>, std::vector<double>> x_distances = calculatePixelDistances(plane_roll, plane_altitude, XFOV, width);
+    std::pair<std::vector<int>, std::vector<double>> y_distances = calculatePixelDistances(plane_pitch, plane_altitude, YFOV, height);
+
+    int x_pixel_index;
+    for (int i = 0; i < x_distances.first.size(); i++) {
+        if (x_distances.first[i] == target_x) {
+            x_pixel_index = i;
+            break;
+        }
+    }
+    double x_dist = x_distances.second[x_pixel_index];
+
+    int y_pixel_index;
+    for (int i = 0; i < y_distances.first.size(); i++) {
+        if (y_distances.first[i] == target_y) {
+            y_pixel_index = i;
+            break;
+        }
+    }
+    double y_dist = y_distances.second[y_pixel_index];
+
+    double yaw = plane_yaw - NORTHYAW;
+
+    double x_prime_meters = x_dist * std::cos(yaw) + y_dist * std::sin(yaw);
+    double y_prime_meters = y_dist * std::cos(yaw) - x_dist * std::sin(yaw);
+
+    std::pair<double, double> finalCoords = addMetersToCoords(plane_lat, plane_lon, y_prime_meters, x_prime_meters);
+
+    double target_lat = finalCoords.first;
+    double target_lon = finalCoords.second;
+
+    return std::make_pair(target_lat, target_lon);
+}
+
+void Camera::gpsCallback(const sensor_msgs::NavSatFixConstPtr& msg){
+	latitude = msg->latitude;
+	longitude = msg->longitude;
+}
+
+void Camera::imuCallback(const sensor_msgs::ImuConstPtr& msg){
+	// create a quaternion message
+	geometry_msgs::Quaternion q = msg->orientation;
+
+	// convert quaternion to euler angles
+	tf2::Quaternion tfq(q.x, q.y, q.z, q.w);
+	tf2::Matrix3x3 m(tfq);
+	m.getRPY(roll, pitch, yaw);
+}
+
+void Camera::relAltCallback(const std_msgs::Float64ConstPtr& msg){
+	altitude = msg->data;
+}
 
 Camera::~Camera() {
 	std::cout << "\nDeleting the CAMERA object\n";
@@ -12,8 +144,8 @@ Camera::~Camera() {
 
 void Camera::differentiateFaces(cv::Mat& image, char* faceColor) {
 	//These are the templates that will be used to be compared with the image
-	cv::Mat happyReference = cv::imread("../resources/SmileTemplate.jpg");
-	cv::Mat sadReference = cv::imread("../resources/SadTemplate.jpg");
+	cv::Mat happyReference = cv::imread("../resources/SmileTemplate.png");
+	cv::Mat sadReference = cv::imread("../resources/SadTemplate.png");
 	cv::Mat happyResult, sadResult;
 
 	//These are going to be values needed for the happy result
@@ -178,9 +310,26 @@ void Camera::cameraCallback(const sensor_msgs::ImageConstPtr& msg)
   std::vector<TargetPixels> targetsPixels = this->analyse_and_draw(image);
   debug_image_pub.publish(cv_bridge::CvImage(std_msgs::Header(), "rgba8", image).toImageMsg());
 
-  // Do some processing with targetsPixels here @cameron and @luca
-
-  // Then publish the latitude and longitude data so the map_generator_node can read it
+  map_generation::TargetLocationsMsg newMsg;
+  for(const auto& target: targetsPixels){
+	std::pair<double, double> latLon = getTargetLatLon(latitude, longitude, pitch, roll, yaw, altitude, target.center.x, target.center.y, image.cols, image.rows);
+	map_generation::TargetLocationMsg targetLocation;
+	targetLocation.latitude = latLon.first;
+	targetLocation.longitude = latLon.second;
+	switch(target.faceColor){
+		case 'r':
+			targetLocation.target_type = 1;
+			break;
+		case 'g':
+			targetLocation.target_type = 0;
+			break;
+		case 'b':
+			targetLocation.target_type = -1;
+			break;
+	}
+	newMsg.targets.push_back(targetLocation);
+  }
+  targetLocationsPub.publish(newMsg);
 }
 
 Camera::Camera(ros::NodeHandle *nh) {
@@ -189,7 +338,11 @@ Camera::Camera(ros::NodeHandle *nh) {
 	hmax_ = 111, smax_ = 255, vmax_ = 255;
 	ROS_INFO("Subscribing to /camera/image");
 	image_sub = nh->subscribe<sensor_msgs::Image>("/camera/image", 10, &Camera::cameraCallback, this);
+	gpsSub = nh->subscribe<sensor_msgs::NavSatFix>("/mavros/global_position/global", 10, &Camera::gpsCallback, this);
+	imuSub = nh->subscribe<sensor_msgs::Imu>("/mavros/imu/data", 10, &Camera::imuCallback, this);
+	relAltSub = nh->subscribe<std_msgs::Float64>("/mavros/global_position/rel_alt", 10, &Camera::relAltCallback, this);
 	debug_image_pub = nh->advertise<sensor_msgs::Image>("/analyzed_image", 10);
+	targetLocationsPub = nh->advertise<map_generation::TargetLocationsMsg>("/target_locations", 10);
 	//End of function
 	return;
 }
@@ -293,113 +446,4 @@ void ReturnData::printTheResultingData() {
 	std::cout << "\n\n";
 
 	return;
-}
-
-
-//Below this line is Pixels to coordinate calculation
-
-std::pair<std::vector<int>, std::vector<double>> calculatePixelDistances(double tilt, double height, double FOV, int resolution) {
-    double dTheta = FOV / resolution;
-    double leftAngle = 0.5 * FOV - tilt;
-    double rightAngle = 0.5 * FOV + tilt;
-
-    std::vector<double> leftThetas;
-    for (double theta = 0; theta < leftAngle; theta += dTheta) {
-        leftThetas.push_back(theta);
-    }
-    std::vector<double> rightThetas;
-    for (double theta = 0; theta <= rightAngle; theta += (rightAngle - leftAngle) / (resolution - leftThetas.size())) {
-        rightThetas.push_back(theta);
-    }
-
-    std::vector<double> leftDisplacements;
-    for (double theta : leftThetas) {
-        leftDisplacements.push_back(dTheta * height / (std::cos(theta) * std::cos(theta)));
-    }
-    std::vector<double> rightDisplacements;
-    for (double theta : rightThetas) {
-        rightDisplacements.push_back(dTheta * height / (std::cos(theta) * std::cos(theta)));
-    }
-
-    std::vector<double> leftDistances(leftDisplacements.size());
-    for (int i = 0; i < leftDisplacements.size(); ++i) {
-        double sum_of_disps = 0;
-        for (int j = 0; j <= i; ++j) {
-            sum_of_disps += leftDisplacements[j];
-        }
-        leftDistances[i] = sum_of_disps;
-    }
-
-    std::vector<double> rightDistances(rightDisplacements.size());
-    for (int i = 0; i < rightDisplacements.size(); ++i) {
-        double sum_of_disps = 0;
-        for (int j = 0; j <= i; ++j) {
-            sum_of_disps += rightDisplacements[j];
-        }
-        rightDistances[i] = sum_of_disps;
-    }
-
-    std::vector<int> pixel_indices;
-    for (int i = 0; i < resolution; ++i) {
-        pixel_indices.push_back(i);
-    }
-    std::vector<double> distances(resolution);
-    for (int i = 0; i < resolution; ++i) {
-        if (i < leftDistances.size()) {
-            distances[i] = leftDistances[leftDistances.size() - 1 - i];
-        } else {
-            distances[i] = rightDistances[i - leftDistances.size()];
-        }
-    }
-
-    return std::make_pair(pixel_indices, distances);
-}
-
-std::pair<double, double> addMetersToCoords(double latitude, double longitude, double dlat, double dlon) {
-    const double R_EARTH = 6378000;
-    double new_lat = latitude + (dlat / R_EARTH) * (180 / M_PI);
-    double new_lon = longitude + (dlon / R_EARTH) * (180 / M_PI) / std::cos(latitude * M_PI / 180);
-
-    return std::make_pair(new_lat, new_lon);
-}
-
-std::pair<double, double> getTargetLatLon(double plane_lat, double plane_lon, double plane_pitch, double plane_roll, double plane_yaw, double plane_altitude, int target_x, int target_y, int image_x, int image_y) {
-    const double NORTHYAW = 0;
-    const double DiagFOV = 120
-
-    double XFOV = DiagFOV * image_x / std::sqrt(image_y * image_y + image_x * image_x) * M_PI / 180;
-    double YFOV = DiagFOV * image_y / std::sqrt(image_y * image_y + image_x * image_x) * M_PI / 180;
-
-    std::vector<std::vector<double>> x_distances = calculatePixelDistances(plane_roll, plane_altitude, XFOV, image_x);
-    std::vector<std::vector<double>> y_distances = calculatePixelDistances(plane_pitch, plane_altitude, YFOV, image_y);
-
-    int x_pixel_index;
-    for (int i = 0; i < x_distances[0].size(); i++) {
-        if (x_distances[0][i] == target_x) {
-            x_pixel_index = i;
-            break;
-        }
-    }
-    double x_dist = x_distances[1][x_pixel_index];
-
-    int y_pixel_index;
-    for (int i = 0; i < y_distances[0].size(); i++) {
-        if (y_distances[0][i] == target_y) {
-            y_pixel_index = i;
-            break;
-        }
-    }
-    double y_dist = y_distances[1][y_pixel_index];
-
-    double yaw = plane_yaw - NORTHYAW;
-
-    double x_prime_meters = x_dist * std::cos(yaw) + y_dist * std::sin(yaw);
-    double y_prime_meters = y_dist * std::cos(yaw) - x_dist * std::sin(yaw);
-
-    std::pair<double, double> finalCoords = addMetersToCoords(plane_lat, plane_lon, y_prime_meters, x_prime_meters);
-
-    double target_lat = finalCoords.first;
-    double target_lon = finalCoords.second;
-
-    return std::make_pair(target_lat, target_lon);
 }
