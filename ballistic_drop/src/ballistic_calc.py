@@ -145,7 +145,7 @@ class BallisticsInfo:
             new_lat, new_long, target_lat, target_long = bal_Calc(self.latitude, self.longitude, v_comp, self.altitude_data, self.wind_x, self.wind_y, self.wind_z, w_comp)
             rate.sleep()
 
-# Main functions
+# main function
 if __name__ == '__main__': 
     # Testing 
     target_lat = 0
