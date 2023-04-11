@@ -35,3 +35,6 @@ def pitch(gam, gam_d, alpha_trim):
 # main function
 if __name__ == '__main__': 
     print("hi")
+
+    # MAV_CMD_NAV_WAYPOINT
+    
