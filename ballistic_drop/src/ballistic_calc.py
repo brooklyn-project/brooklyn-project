@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 import rospy
-# from geometry_msgs import PoseWithCovarianceStamped, TwistStamped
+from geometry_msgs import PoseWithCovarianceStamped, TwistStamped
 from std_msgs.msg import String, Float64MultiArray, Float64
 import numpy as np
 import math
@@ -139,35 +139,37 @@ class BallisticsInfo:
             # Calculate plane velocity opposite of wind
             w_xy = [self.wind_x, self.wind_y]
             unit_xy = -1 * (w_xy / np.linalg.norm(w_xy))
+            unit_xy = 21.092222222 * unit_xy
 
-            v_comp = [unit_xy[0]*self.vel_x, unit_xy[1]*self.vel_y, self.vel_z]
+            # v_comp = [unit_xy[0]*self.vel_x, unit_xy[1]*self.vel_y, self.vel_z]
+            v_comp = [unit_xy[0], unit_xy[1], self.vel_z]
 
             new_lat, new_long, target_lat, target_long = bal_Calc(self.latitude, self.longitude, v_comp, self.altitude_data, self.wind_x, self.wind_y, self.wind_z, w_comp)
             rate.sleep()
 
-# Main functions
+# main function
 if __name__ == '__main__': 
     # Testing 
-    target_lat = 0
-    target_long = 0
+    # target_lat = 0
+    # target_long = 0
 
-    V = 40
-    true_course = 90
+    # V = 40
+    # true_course = 90
 
-    z_loc = 400
+    # z_loc = 150
 
-    v_comp = [40,40,0]
-    w_comp = [-5,-0.0001,0]
-    w_xy = [w_comp[0], w_comp[1]]
-    unit_xy = -1 * (w_xy / np.linalg.norm(w_xy))
+    # v_comp = [40,40,0]
+    # w_comp = [-5,-0.0001,0]
+    # w_xy = [w_comp[0], w_comp[1]]
+    # unit_xy = -1 * (w_xy / np.linalg.norm(w_xy))
 
-    v_comp = [unit_xy[0]*v_comp[0], unit_xy[1]*v_comp[1], v_comp[2]] 
-    print(v_comp)
+    # v_comp = [unit_xy[0]*v_comp[0], unit_xy[1]*v_comp[1], v_comp[2]] 
+    # print(v_comp)
 
-    new_lat, new_long, target_lat, target_long = bal_Calc(target_lat, target_long, v_comp, z_loc, w_comp)
-    print("Payload Release Point: ",new_lat, new_long)
-    print("Target Location: ", target_lat, target_long)
+    # new_lat, new_long, target_lat, target_long = bal_Calc(target_lat, target_long, v_comp, z_loc, w_comp)
+    # print("Payload Release Point: ",new_lat, new_long)
+    # print("Target Location: ", target_lat, target_long)
 
-    # listener = BallisticsInfo()
-    # listener.spin()
+    listener = BallisticsInfo()
+    listener.spin()
 
