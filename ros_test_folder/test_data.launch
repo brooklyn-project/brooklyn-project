@@ -1,0 +1,20 @@
+<launch>
+  <node pkg="rosbag" type="play" name="bag_player" args="-l /root/catkin_ws/src/brooklyn_project/ros_test_folder/default_0.bag" output="screen">
+    <!-- <remap from="/camera/image_throttle" to="/camera/image" /> -->
+    <remap from="/mavros/global_position/compass_hdg_throttle" to="/mavros/global_position/compass_hdg" />
+    <remap from="/mavros/global_position/global_throttle" to="/mavros/global_position/global" />
+    <remap from="/mavros/global_position/local_throttle" to="/mavros/global_position/local" />
+    <remap from="/mavros/global_position/raw/fix_throttle" to="/mavros/global_position/raw/fix" />
+    <remap from="/mavros/global_position/raw/gps_vel_throttle" to="/mavros/global_position/raw/gps_vel" />
+    <remap from="/mavros/global_position/rel_alt_throttle" to="/mavros/global_position/rel_alt" />
+    <remap from="/mavros/imu/data_raw_throttle" to="/mavros/imu/data_raw" />
+    <remap from="/mavros/imu/data_throttle" to="/mavros/imu/data" />
+    <remap from="/mavros/imu/mag_throttle" to="/mavros/imu/mag" />
+    <remap from="/mavros/wind_estimation_throttle" to="/mavros/wind_estimation" />
+  </node>
+  <remap from="/camera/image_raw" to="/camera/image" />
+  <include file="$(find video_stream_opencv)/launch/camera.launch">
+    <arg name="video_stream_provider" value="/root/catkin_ws/src/brooklyn_project/ros_test_folder/test_video.mp4" />
+    <arg name="loop_videofile" value="true" />
+  </include>
+</launch>

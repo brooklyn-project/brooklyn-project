@@ -1,0 +1,20 @@
+<launch>
+
+  <!-- Launch mavros -->
+  <node pkg="mavros" type="mavros_node" name="mavros" output="screen" >
+    <param name="fcu_url" value="/dev/video0" />
+  </node>
+
+  <!-- Launch usb_cam -->
+  <node pkg="usb_cam" type="usb_cam_node" name="usb_cam" output="screen">
+    <param name="video_device" value="/dev/video0" />
+    <param name="image_width" value="640" />
+    <param name="image_height" value="480" />
+    <param name="pixel_format" value="yuyv" />
+    <param name="camera_frame_id" value="usb_cam" />
+  </node>
+
+  <!-- Launch rosbag -->
+  <node pkg="rosbag" type="record" name="rosbag" output="screen" args="-O /root/my_bag_file.bag -a"/>
+
+</launch>

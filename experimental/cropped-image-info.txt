@@ -1,4 +1,0 @@
-cropped-manor-nwc4.tif
-Original Image Dimensions: 10224, 11607
-position of top left corner: 2600, 1800
-size of cropped image: 2552, 2724
