@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.0.2)
-project(practice)
+project(ballistic_drop)
 
 ## Compile as C++11, supported in ROS Kinetic and newer
 # add_compile_options(-std=c++11)
@@ -12,6 +12,7 @@ find_package(catkin REQUIRED COMPONENTS
   rospy
   std_msgs
   geometry_msgs
+  mavros_msgs
 )
 
 ## System dependencies are found with CMake's conventions

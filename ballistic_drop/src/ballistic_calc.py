@@ -1,7 +1,10 @@
 #!/usr/bin/env python
 import rospy
 from geometry_msgs import PoseWithCovarianceStamped, TwistStamped
+from mavros_msgs.msg import GlobalPositionTarget, PositionTarget
 from std_msgs.msg import String, Float64MultiArray, Float64
+from sensor_msgs.msg import NavSatFix
+from geometry_msgs.msg import Vector3
 import numpy as np
 import math
 
@@ -12,6 +15,35 @@ A = 0.05 # MISSING, area exposed to direction of drop (m^2)
 M = 0.1133981 # payload mass (kg) 0.25 lbs
 G = 9.81 # gravity constant (m/s^2)
 P = 1/7 # exponential parameter from wind update
+
+tolerance = 0.01
+
+target_pub = rospy.Publisher('/mavros/setpoint_position/global', GlobalPositionTarget, queue_size=10)
+vector_pub = rospy.Publisher('/mavros/setpoint_raw/local', PositionTarget, queue_size=10)
+
+def gps_update(lat, long, alt=200):
+    # Create GlobalPositionTarget message with target location
+    target_msg = GlobalPositionTarget()
+    target_msg.coordinate_frame = GlobalPositionTarget.FRAME_GLOBAL_REL_ALT
+    target_msg.type_mask = GlobalPositionTarget.IGNORE_VX + GlobalPositionTarget.IGNORE_VY + GlobalPositionTarget.IGNORE_VZ + GlobalPositionTarget.IGNORE_AFX + GlobalPositionTarget.IGNORE_AFY + GlobalPositionTarget.IGNORE_AFZ + GlobalPositionTarget.FORCE + GlobalPositionTarget.IGNORE_YAW + GlobalPositionTarget.IGNORE_YAW_RATE
+    target_msg.latitude = lat
+    target_msg.longitude = long
+    target_msg.altitude = alt
+
+    # Publish target location message
+    target_pub.publish(target_msg)
+
+def vector_update(x,y,z,s):
+    # Create PositionTarget message with approach vector and speed
+    vector_msg = PositionTarget()
+    vector_msg.coordinate_frame = PositionTarget.FRAME_LOCAL_NED
+    vector_msg.type_mask = PositionTarget.IGNORE_AFX + PositionTarget.IGNORE_AFY + PositionTarget.IGNORE_AFZ + PositionTarget.IGNORE_YAW_RATE
+    vector_msg.position = Vector3(x, y, z)
+    vector_msg.velocity = Vector3(s, s, s)
+
+    # Publish approach vector message
+    vector_pub.publish(vector_msg)
+
 
 # Updating the wind at each time step with wind profile power law
 def wind_Update(w_1, z_1, z_2):
@@ -86,7 +118,16 @@ def bal_Calc(target_lat, target_long, v_comp, z_loc, w_comp):
     new_lat = target_lat - (x_disp/111000)
     new_long = target_long - (y_disp / (math.cos(target_lat) * 111000))
     return new_lat, new_long, target_lat, target_long
-    
+
+# Define a function to check if the standard deviation has stopped changing significantly
+def is_std_stable(arr, tolerance):
+    std = np.std(arr)
+    if len(arr) < 2:
+        return False
+    elif np.abs(std - np.std(arr[:-1])) < tolerance:
+        return True
+    else:
+        return False
 
 # ROS 
 class BallisticsInfo:
@@ -132,6 +173,8 @@ class BallisticsInfo:
 
     def spin(self):
         rate = rospy.Rate(10)
+        lat_array = []
+        long_array = []
         while not rospy.is_shutdown():
             # Calculate ballistics drop location
             w_comp = [self.wind_x, self.wind_y, self.wind_z]
@@ -145,6 +188,18 @@ class BallisticsInfo:
             v_comp = [unit_xy[0], unit_xy[1], self.vel_z]
 
             new_lat, new_long, target_lat, target_long = bal_Calc(self.latitude, self.longitude, v_comp, self.altitude_data, self.wind_x, self.wind_y, self.wind_z, w_comp)
+            lat_array.append(new_lat)
+            long_array.append(new_long)
+
+            if is_std_stable(lat_array, tolerance) and is_std_stable(long_array, tolerance):
+                lat_avg = np.average(lat_array)
+                long_avg = np.average(long_array)
+
+                gps_update(lat_avg, long_avg)
+                vector_update(unit_xy[0],unit_xy[1],self.vel_z,21.092222222)
+                
+                rospy.is_shutdown()
+
             rate.sleep()
 
 # main function

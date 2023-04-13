@@ -2,7 +2,7 @@
 <package format="2">
   <name>ballistic_drop</name>
   <version>0.0.0</version>
-  <description>The practice package</description>
+  <description>The ballistic_drop package</description>
 
   <!-- One maintainer tag required, multiple allowed, one person per tag -->
   <!-- Example:  -->
