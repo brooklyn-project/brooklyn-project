@@ -207,6 +207,6 @@ include_directories(
 ## Add folders to be run by python nosetests
 # catkin_add_nosetests(test)
 
-catkin_install_python(PROGRAMS src/ballistic_calc/py src/flight_equations.py src/flight_plan_updator.py
+catkin_install_python(PROGRAMS src/ballistic_calc.py src/flight_equations.py src/flight_plan_updator.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
